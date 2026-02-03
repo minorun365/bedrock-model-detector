@@ -84,22 +84,20 @@ def create_agent() -> Agent:
 2. リージョンごとのモデル一覧
    - リージョン名（日本語名も併記）
    - 各モデルのモデルID
-3. 署名
 
 ### フォーマット例
 ```
-東京リージョン（ap-northeast-1）に新しいモデルが追加されました！
+Amazon Bedrockに新しいモデルが出現しました🚀
 
-■ 東京（ap-northeast-1）
+■ AWS東京リージョン（ap-northeast-1）
   • anthropic.claude-sonnet-5-20260101-v1:0
-
----
-Bedrock Model Detector
 ```
 
 ## 重要
-必ず send_notification ツールを使って通知を送信してください。
-ツールを呼び出さずに終了しないでください。"""
+- 必ず send_notification ツールを使って通知を送信してください
+- **通知は必ず1通にまとめてください**（リージョンごとに分けて複数回送らないこと）
+- すべてのリージョンの新モデルを1つのメール本文にまとめて、send_notification を1回だけ呼び出してください
+- ツールを呼び出さずに終了しないでください"""
 
     return Agent(
         model="us.anthropic.claude-sonnet-4-5-20250929-v1:0",
