@@ -144,7 +144,3 @@ cdk destroy
 - **データストア**: Amazon DynamoDB
 - **通知**: Amazon SNS (Email)
 - **スケジューラ**: Amazon EventBridge Scheduler
-
-## ライセンス
-
-MIT
