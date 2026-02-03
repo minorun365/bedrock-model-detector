@@ -6,6 +6,7 @@ Amazon Bedrockに新しいモデルが追加されたことを自動検知し、
 
 - 3リージョン（バージニア北部、オレゴン、東京）のBedrockモデルを5分おきに監視
 - 新モデル追加時にAIエージェントが日本語の通知メールを自動生成
+- **Tavilyウェブ検索**でモデルの特徴を調べて通知に追加
 - [Strands Agents](https://strandsagents.com/) + [Bedrock AgentCore](https://docs.aws.amazon.com/bedrock/latest/userguide/agents-agentcore.html) を活用
 
 ## アーキテクチャ
@@ -56,14 +57,29 @@ npm install
 # AWS認証（必要に応じて）
 aws login
 
-# デプロイ（メールアドレスは必須）
-cdk deploy -c notificationEmail=your-email@example.com
+# デプロイ（メールアドレスとTavily APIキーを指定）
+cdk deploy \
+  -c notificationEmail=your-email@example.com \
+  -c tavilyApiKey=tvly-your-api-key
+```
+
+### オプション: 高速デプロイ（Hotswap）
+
+開発中はHotswapを使うと高速にデプロイできます（本番環境では使用禁止）。
+
+```bash
+cdk deploy --hotswap \
+  -c notificationEmail=your-email@example.com \
+  -c tavilyApiKey=tvly-your-api-key
 ```
 
 ### オプション: 監視対象リージョンを変更
 
 ```bash
-cdk deploy -c notificationEmail=your-email@example.com -c targetRegions=us-east-1,us-west-2
+cdk deploy \
+  -c notificationEmail=your-email@example.com \
+  -c tavilyApiKey=tvly-your-api-key \
+  -c targetRegions=us-east-1,us-west-2
 ```
 
 ### 4. SNSサブスクリプションの確認
@@ -76,7 +92,10 @@ cdk deploy -c notificationEmail=your-email@example.com -c targetRegions=us-east-
 | パラメータ | 説明 | デフォルト値 |
 |-----------|------|-------------|
 | `notificationEmail` | 通知先メールアドレス | 必須 |
+| `tavilyApiKey` | Tavily APIキー（ウェブ検索用） | 任意 |
 | `targetRegions` | 監視対象リージョン（カンマ区切り） | `us-east-1,us-west-2,ap-northeast-1` |
+
+> **Note**: Tavily APIキーは [tavily.com](https://tavily.com/) で取得できます。
 
 ## ディレクトリ構成
 
@@ -98,10 +117,12 @@ bedrock-model-detector/
 ```
 件名: Bedrockに新しいモデルが追加されました
 
-東京リージョン（ap-northeast-1）に新しいモデルが追加されました！
+Amazon Bedrockに新しいモデルが出現しました🚀
 
-■ 東京（ap-northeast-1）
+■ AWS東京リージョン（ap-northeast-1）
   • anthropic.claude-sonnet-5-20260101-v1:0
+    → 最新のClaude Sonnet 5は、コーディング能力が大幅に向上し、
+      長文コンテキストの処理も改善されています。
 
 ---
 Bedrock Model Detector
@@ -119,6 +140,7 @@ cdk destroy
 - **IaC**: AWS CDK (TypeScript)
 - **Lambda**: Python 3.13
 - **Agent**: Strands Agents + Bedrock AgentCore Runtime
+- **ウェブ検索**: Tavily API
 - **データストア**: Amazon DynamoDB
 - **通知**: Amazon SNS (Email)
 - **スケジューラ**: Amazon EventBridge Scheduler

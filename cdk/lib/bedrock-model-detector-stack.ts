@@ -14,13 +14,15 @@ export interface BedrockModelDetectorStackProps extends cdk.StackProps {
   notificationEmail: string;
   /** 監視対象リージョン（カンマ区切り） */
   targetRegions: string;
+  /** Tavily API Key（ウェブ検索用） */
+  tavilyApiKey?: string;
 }
 
 export class BedrockModelDetectorStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: BedrockModelDetectorStackProps) {
     super(scope, id, props);
 
-    const { notificationEmail, targetRegions } = props;
+    const { notificationEmail, targetRegions, tavilyApiKey } = props;
 
     // ========================================
     // DynamoDB テーブル
@@ -56,9 +58,10 @@ export class BedrockModelDetectorStack extends cdk.Stack {
     const agentRuntime = new agentcore.Runtime(this, 'NotificationAgent', {
       runtimeName: 'bedrock_model_detector_agent',
       agentRuntimeArtifact: agentRuntimeArtifact,
-      description: 'Bedrock新モデル通知エージェント',
+      description: 'Bedrock新モデル通知エージェント（Tavily検索対応）',
       environmentVariables: {
         SNS_TOPIC_ARN: notificationTopic.topicArn,
+        ...(tavilyApiKey && { TAVILY_API_KEY: tavilyApiKey }),
       },
       // IAM認証はデフォルト（authorizerConfigurationを設定しない）
     });
