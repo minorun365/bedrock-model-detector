@@ -1,0 +1,18 @@
+# CDK
+cdk/cdk.out/
+cdk/node_modules/
+cdk/**/*.js
+cdk/**/*.d.ts
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# OS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
