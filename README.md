@@ -123,9 +123,6 @@ Amazon Bedrockに新しいモデルが出現しました🚀
   • anthropic.claude-sonnet-5-20260101-v1:0
     → 最新のClaude Sonnet 5は、コーディング能力が大幅に向上し、
       長文コンテキストの処理も改善されています。
-
----
-Bedrock Model Detector
 ```
 
 ## 削除方法
