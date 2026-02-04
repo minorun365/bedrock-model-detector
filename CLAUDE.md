@@ -15,13 +15,10 @@ cd cdk && npm install
 # ビルド
 cd cdk && npm run build
 
-# テスト
-cd cdk && npm test
-
-# デプロイ（必須パラメータ: notificationEmail）
+# デプロイ（必須パラメータ: notificationEmail、tavilyApiKeyは任意）
 cdk deploy -c notificationEmail=your-email@example.com -c tavilyApiKey=tvly-xxx
 
-# 高速デプロイ（開発用）
+# 高速デプロイ（開発用・CloudFormation経由せずLambda/Dockerを直接更新）
 cdk deploy --hotswap -c notificationEmail=xxx -c tavilyApiKey=xxx
 
 # 削除
@@ -38,8 +35,8 @@ Lambda (Python 3.13) ─── DynamoDB（差分管理）
     └─ 新モデル検出 → AgentCore Runtime
                             ↓
                       Strands Agent
-                        ├─ Tavily検索
-                        └─ SNS通知
+                        ├─ Tavily検索（モデル情報収集）
+                        └─ SNS通知（1通にまとめて送信）
 ```
 
 **監視リージョン**: us-east-1, us-west-2, ap-northeast-1（3リージョン並列処理）
@@ -69,14 +66,22 @@ Lambda実行ロールには `agentRuntimeArn` と `agentRuntimeArn/*` 両方の�
 ### SCPタグ
 Organizations配下では `Project` タグが必須。`cdk.Tags.of(stack).add('Project', 'presales')` で付与。
 
-## テスト方法
+## デバッグ
 
-`docs/TEST.md` 参照。DynamoDBから特定モデルを削除して新規検出をシミュレート可能。
+詳細は `docs/TEST.md` 参照。DynamoDBから特定モデルを削除して新規検出をシミュレート可能。
 
 ```bash
 # Lambda手動実行
-aws lambda invoke --function-name bedrock-model-detector --region us-east-1 /tmp/response.json
+aws lambda invoke --function-name bedrock-model-detector --region us-east-1 /tmp/response.json && cat /tmp/response.json
 
-# AgentCoreログ確認
+# Lambdaログ確認
+aws logs tail /aws/lambda/bedrock-model-detector --region us-east-1 --follow
+
+# AgentCoreロググループ名を確認（動的に変わる）
+aws logs describe-log-groups --region us-east-1 \
+  --log-group-name-prefix "/aws/bedrock-agentcore/runtimes/bedrock_model_detector" \
+  --query 'logGroups[*].logGroupName' --output text
+
+# AgentCoreログ確認（上記で取得したロググループ名を使用）
 aws logs tail "/aws/bedrock-agentcore/runtimes/bedrock_model_detector_agent-xxx-DEFAULT" --region us-east-1 --follow
 ```
