@@ -28,7 +28,7 @@ cdk destroy
 ## アーキテクチャ
 
 ```
-EventBridge Scheduler (5分おき)
+EventBridge Scheduler (1分おき)
     ↓
 Lambda (Python 3.13) ─── DynamoDB（差分管理）
     │

@@ -162,9 +162,11 @@ def handler(event, context):
 
     # 差分を検出
     new_models: dict[str, list[str]] = {}
+    previous_models: dict[str, set[str]] = {}
 
     for region, models in current_models.items():
         previous = get_previous_models(region)
+        previous_models[region] = previous
         new = models - previous
 
         if new:
@@ -175,15 +177,13 @@ def handler(event, context):
     if new_models:
         logger.info(f"New models found: {new_models}")
         invoke_agentcore_runtime(new_models)
-
-        # 成功したらDynamoDBを更新
-        for region, models in current_models.items():
-            save_models(region, models)
     else:
         logger.info("No new models detected")
-        # 変更がなくてもDynamoDBを更新（タイムスタンプ更新）
-        for region, models in current_models.items():
-            save_models(region, models)
+
+    # DynamoDBを更新（和集合方式: APIから一時的に消えたモデルもDBに残す）
+    for region, models in current_models.items():
+        previous = previous_models.get(region, set())
+        save_models(region, models | previous)
 
     return {
         'statusCode': 200,

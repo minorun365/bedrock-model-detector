@@ -1,10 +1,10 @@
-# Bedrock Model Detector
+# Bedrock新モデルを宇宙最速でお知らせくん
 
 Amazon Bedrockに新しいモデルが追加されたことを自動検知し、メールで通知するサーバーレスアプリケーションです。
 
 ## 概要
 
-- 3リージョン（バージニア北部、オレゴン、東京）のBedrockモデルを5分おきに監視
+- 3リージョン（バージニア北部、オレゴン、東京）のBedrockモデルを1分おきに監視
 - 新モデル追加時にAIエージェントが日本語の通知メールを自動生成
 - **Tavilyウェブ検索**でモデルの特徴を調べて通知に追加
 - [Strands Agents](https://strandsagents.com/) + [Bedrock AgentCore](https://docs.aws.amazon.com/bedrock/latest/userguide/agents-agentcore.html) を活用
@@ -12,7 +12,7 @@ Amazon Bedrockに新しいモデルが追加されたことを自動検知し、
 ## アーキテクチャ
 
 ```
-EventBridge Scheduler (5分おき)
+EventBridge Scheduler (1分おき)
     │
     ▼
 Lambda関数 (Python 3.13)

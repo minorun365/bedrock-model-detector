@@ -40,7 +40,7 @@ export class BedrockModelDetectorStack extends cdk.Stack {
     // ========================================
     const notificationTopic = new sns.Topic(this, 'NotificationTopic', {
       topicName: 'bedrock-model-detector-notifications',
-      displayName: 'Bedrock Model Detector Notifications',
+      displayName: 'Bedrock新モデルお知らせくん',
     });
 
     // Email サブスクリプション
@@ -131,7 +131,7 @@ export class BedrockModelDetectorStack extends cdk.Stack {
 
     new scheduler.CfnSchedule(this, 'DetectorSchedule', {
       name: 'bedrock-model-detector-schedule',
-      scheduleExpression: 'rate(5 minutes)',
+      scheduleExpression: 'rate(1 minute)',
       flexibleTimeWindow: { mode: 'OFF' },
       target: {
         arn: detectorFunction.functionArn,

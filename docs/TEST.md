@@ -84,8 +84,8 @@ EOF
 
 #### 4. 通知を待つ
 
-- EventBridge Schedulerが5分おきにLambdaを実行
-- 最大5分後にメール通知が届く
+- EventBridge Schedulerが1分おきにLambdaを実行
+- 最大1分後にメール通知が届く
 
 #### 5. 確認ポイント
 
@@ -102,6 +102,7 @@ EOF
 | Claude Sonnet 4.5 | `anthropic.claude-sonnet-4-5-20250929-v1:0` |
 | Claude Haiku 4.5 | `anthropic.claude-haiku-4-5-20251001-v1:0` |
 | Claude Opus 4.5 | `anthropic.claude-opus-4-5-20251101-v1:0` |
+| Claude Opus 4.6 | `anthropic.claude-opus-4-6-v1` |
 
 ---
 
