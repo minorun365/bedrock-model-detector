@@ -9,14 +9,14 @@ DynamoDBに保存されているモデル一覧から特定のモデルを削除
 ### 前提条件
 
 - AWS CLIがインストール済み
-- AWS認証が完了していること（`aws login`）
+- AWS SSO認証が完了していること
 
 ### 手順
 
 #### 1. AWS認証
 
 ```bash
-aws login
+aws sso login --profile sandbox
 ```
 
 #### 2. 現在のモデル一覧を確認
@@ -25,69 +25,63 @@ aws login
 # 東京リージョンのモデル一覧を確認
 aws dynamodb get-item \
   --table-name bedrock-model-detector \
+  --profile sandbox \
   --region us-east-1 \
   --key '{"pk": {"S": "MODEL_STATE"}, "region": {"S": "ap-northeast-1"}}' \
   --query 'Item.model_ids.L[*].S' \
   --output json | jq .
 ```
 
-#### 3. 特定のモデルを削除してテスト
+#### 3. 特定のモデルを全リージョンから一括削除
 
-以下のPythonスクリプトを実行して、指定したモデルをDynamoDBから削除します。
+以下のPythonスクリプトで、指定したモデルを**3リージョンすべて**のDynamoDBから一括削除します。
+`MODEL_TO_DELETE` を削除したいモデルIDに変更して実行してください。
 
 ```bash
 python3 << 'EOF'
-import json
 import boto3
 
-# 設定
-REGION = "ap-northeast-1"  # 削除対象のリージョン
-MODEL_TO_DELETE = "anthropic.claude-sonnet-4-5-20250929-v1:0"  # 削除するモデルID
+# === 設定 ===
+MODEL_TO_DELETE = "anthropic.claude-opus-4-6-v1"  # 削除するモデルID
+REGIONS = ["us-east-1", "us-west-2", "ap-northeast-1"]
 
-# DynamoDB から現在のモデルリストを取得
-dynamodb = boto3.client('dynamodb', region_name='us-east-1')
-response = dynamodb.get_item(
-    TableName='bedrock-model-detector',
-    Key={
-        'pk': {'S': 'MODEL_STATE'},
-        'region': {'S': REGION}
-    }
-)
+session = boto3.Session(profile_name="sandbox", region_name="us-east-1")
+dynamodb = session.resource("dynamodb")
+table = dynamodb.Table("bedrock-model-detector")
 
-# 現在のモデルリスト
-current_models = [item['S'] for item in response['Item']['model_ids']['L']]
-print(f"現在のモデル数: {len(current_models)}")
-
-# 指定モデルを削除
-if MODEL_TO_DELETE in current_models:
-    filtered_models = [m for m in current_models if m != MODEL_TO_DELETE]
-    print(f"削除後のモデル数: {len(filtered_models)}")
-
-    # DynamoDB を更新
-    model_ids_dynamo = [{"S": m} for m in filtered_models]
-    dynamodb.update_item(
-        TableName='bedrock-model-detector',
-        Key={
-            'pk': {'S': 'MODEL_STATE'},
-            'region': {'S': REGION}
-        },
-        UpdateExpression='SET model_ids = :models',
-        ExpressionAttributeValues={
-            ':models': {'L': model_ids_dynamo}
-        }
-    )
-    print(f"✅ {MODEL_TO_DELETE} を削除しました")
-else:
-    print(f"⚠️ {MODEL_TO_DELETE} は見つかりませんでした")
+for region in REGIONS:
+    resp = table.get_item(Key={"pk": "MODEL_STATE", "region": region})
+    item = resp["Item"]
+    old_models = item["model_ids"]
+    new_models = [m for m in old_models if m != MODEL_TO_DELETE]
+    removed = len(old_models) - len(new_models)
+    print(f"{region}: {len(old_models)} -> {len(new_models)} models (removed {removed})")
+    if removed > 0:
+        table.update_item(
+            Key={"pk": "MODEL_STATE", "region": region},
+            UpdateExpression="SET model_ids = :m",
+            ExpressionAttributeValues={":m": new_models},
+        )
+        print(f"  -> OK!")
+    else:
+        print(f"  -> not found, skipping")
 EOF
 ```
 
-#### 4. 通知を待つ
+#### 4. （任意）単一リージョンのみ削除
+
+特定リージョンだけをテストしたい場合は、上記スクリプトの `REGIONS` を変更してください。
+
+```python
+REGIONS = ["ap-northeast-1"]  # 東京リージョンのみ
+```
+
+#### 5. 通知を待つ
 
 - EventBridge Schedulerが1分おきにLambdaを実行
 - 最大1分後にメール通知が届く
 
-#### 5. 確認ポイント
+#### 6. 確認ポイント
 
 - [ ] メールが1通だけ届くこと
 - [ ] 削除したモデルが「新規モデル」として通知されること
@@ -111,33 +105,23 @@ EOF
 ### Lambda関数のログ
 
 ```bash
-aws logs tail /aws/lambda/bedrock-model-detector --region us-east-1 --follow
+aws logs tail /aws/lambda/bedrock-model-detector --region us-east-1 --profile sandbox --follow
 ```
 
 ### AgentCore Runtimeのログ
 
 ```bash
-# ロググループ名を確認
+# ロググループ名を確認（動的に変わるため毎回確認が必要）
 aws logs describe-log-groups \
   --region us-east-1 \
+  --profile sandbox \
   --log-group-name-prefix "/aws/bedrock-agentcore/runtimes/bedrock_model_detector" \
   --query 'logGroups[*].logGroupName' \
   --output text
 
-# ログを確認（ロググループ名は上記で確認したものを使用）
-aws logs tail "/aws/bedrock-agentcore/runtimes/bedrock_model_detector_agent-lkmZVaGCZ8-DEFAULT" \
+# ログを確認（上記で取得したロググループ名を使用）
+aws logs tail "<上記で取得したロググループ名>" \
   --region us-east-1 \
+  --profile sandbox \
   --follow
-```
-
-### 通知送信回数の確認
-
-```bash
-aws logs filter-log-events \
-  --log-group-name "/aws/bedrock-agentcore/runtimes/bedrock_model_detector_agent-lkmZVaGCZ8-DEFAULT" \
-  --region us-east-1 \
-  --start-time $(echo "$(date -u +%s) - 900" | bc)000 \
-  --filter-pattern "Notification sent" \
-  --query 'events[*].message' \
-  --output text | grep -c "Notification sent"
 ```
