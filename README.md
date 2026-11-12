@@ -1,13 +1,6 @@
 # Bedrock新モデルを宇宙最速でお知らせくん
 
-Amazon Bedrockに新しいモデルが追加されたことを自動検知し、メールで通知するサーバーレスアプリケーションです。
-
-## 概要
-
-- 3リージョン（バージニア北部、オレゴン、東京）のBedrockモデルを1分おきに監視
-- 新モデル追加時にAIエージェントが日本語の通知メールを自動生成
-- **Tavilyウェブ検索**でモデルの特徴を調べて通知に追加
-- [Strands Agents](https://strandsagents.com/) + [Bedrock AgentCore](https://docs.aws.amazon.com/bedrock/latest/userguide/agents-agentcore.html) を活用
+Amazon Bedrockに新しいモデルが追加されたことを自動検知し、メールで通知するサーバーレスアプリケーションです。バージニア北部・オレゴン・東京の3リージョンを1分おきに確かめ、新しいモデルが見つかると、[Strands Agents](https://strandsagents.com/) で作ったエージェントが Tavily のウェブ検索でモデルの特徴を調べ、日本語の通知メールを書きます。エージェントは [Bedrock AgentCore](https://docs.aws.amazon.com/bedrock/latest/userguide/agents-agentcore.html) Runtime で動きます。
 
 ## アーキテクチャ
 
@@ -95,7 +88,7 @@ cdk deploy \
 | `tavilyApiKey` | Tavily APIキー（ウェブ検索用） | 任意 |
 | `targetRegions` | 監視対象リージョン（カンマ区切り） | `us-east-1,us-west-2,ap-northeast-1` |
 
-> **Note**: Tavily APIキーは [tavily.com](https://tavily.com/) で取得できます。
+Tavily APIキーは [tavily.com](https://tavily.com/) で取得できます。
 
 ## ディレクトリ構成
 
@@ -134,10 +127,12 @@ cdk destroy
 
 ## 技術スタック
 
-- **IaC**: AWS CDK (TypeScript)
-- **Lambda**: Python 3.13
-- **Agent**: Strands Agents + Bedrock AgentCore Runtime
-- **ウェブ検索**: Tavily API
-- **データストア**: Amazon DynamoDB
-- **通知**: Amazon SNS (Email)
-- **スケジューラ**: Amazon EventBridge Scheduler
+| 役割 | 技術 |
+|---|---|
+| IaC | AWS CDK (TypeScript) |
+| Lambda | Python 3.13 |
+| エージェント | Strands Agents + Bedrock AgentCore Runtime |
+| ウェブ検索 | Tavily API |
+| データストア | Amazon DynamoDB |
+| 通知 | Amazon SNS (Email) |
+| スケジューラ | Amazon EventBridge Scheduler |
