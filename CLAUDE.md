@@ -15,11 +15,11 @@ cd cdk && npm install
 # ビルド
 cd cdk && npm run build
 
-# デプロイ（必須パラメータ: notificationEmail、tavilyApiKeyは任意）
-cdk deploy -c notificationEmail=your-email@example.com -c tavilyApiKey=tvly-xxx
+# デプロイ（必須パラメータ: notificationEmail）
+cdk deploy -c notificationEmail=your-email@example.com
 
 # 高速デプロイ（開発用・CloudFormation経由せずLambda/Dockerを直接更新）
-cdk deploy --hotswap -c notificationEmail=xxx -c tavilyApiKey=xxx
+cdk deploy --hotswap -c notificationEmail=xxx
 
 # 削除
 cdk destroy
@@ -35,7 +35,7 @@ Lambda (Python 3.13) ─── DynamoDB（差分管理）
     └─ 新モデル検出 → AgentCore Runtime
                             ↓
                       Strands Agent
-                        ├─ Tavily検索（モデル情報収集）
+                        ├─ AgentCore Web Search（モデル情報収集）
                         └─ SNS通知（1通にまとめて送信）
 ```
 

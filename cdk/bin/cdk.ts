@@ -14,7 +14,6 @@ if (!notificationEmail) {
 }
 
 const targetRegions = app.node.tryGetContext('targetRegions') || 'us-east-1,us-west-2,ap-northeast-1';
-const tavilyApiKey = app.node.tryGetContext('tavilyApiKey');
 
 const stack = new BedrockModelDetectorStack(app, 'BedrockModelDetectorStack', {
   env: {
@@ -23,7 +22,6 @@ const stack = new BedrockModelDetectorStack(app, 'BedrockModelDetectorStack', {
   },
   notificationEmail,
   targetRegions,
-  tavilyApiKey,
 });
 
 // SCP必須タグを追加

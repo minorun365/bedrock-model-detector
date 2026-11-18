@@ -1,5 +1,4 @@
 strands-agents[otel]
 bedrock-agentcore
-boto3
-requests
+boto3>=1.44.5
 aws-opentelemetry-distro

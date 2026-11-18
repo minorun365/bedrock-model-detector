@@ -6,8 +6,9 @@ Strands Agentsを使用してメール本文を生成し、SNSに送信する
 import os
 import logging
 
+from datetime import datetime, timedelta, timezone
+
 import boto3
-import requests
 from strands import Agent, tool
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 
@@ -17,7 +18,6 @@ logger = logging.getLogger(__name__)
 
 # 環境変数
 SNS_TOPIC_ARN = os.environ.get('SNS_TOPIC_ARN', '')
-TAVILY_API_KEY = os.environ.get('TAVILY_API_KEY', '')
 
 # SNS_TOPIC_ARNからリージョンを抽出（例: arn:aws:sns:us-east-1:123456789:topic-name）
 def get_region_from_arn(arn: str) -> str:
@@ -31,70 +31,42 @@ def get_region_from_arn(arn: str) -> str:
 # SNSクライアント（リージョンを明示的に指定）
 sns_client = boto3.client('sns', region_name=get_region_from_arn(SNS_TOPIC_ARN))
 
+# AgentCore Web Search（AWS が用意する検索。リソースを作らず IAM だけで呼べる）
+web_search_client = boto3.client('bedrock-agentcore', region_name=get_region_from_arn(SNS_TOPIC_ARN))
+
 # AgentCoreアプリ
 app = BedrockAgentCoreApp()
 
 
 @tool
-def search_web(query: str, recent_days: int = 0, search_x: bool = False) -> str:
-    """ウェブ検索を実行して、AIモデルに関する最新情報を取得します。
+def search_web(query: str, recent_days: int = 0) -> str:
+    """ウェブ検索を実行して、AIモデルに関する最新情報を取得します（AgentCore Web Search）。
 
     新モデルのリリース情報を調べる際は、以下のようなクエリが効果的です:
-    - X速報: search_web("Anthropic Claude Opus 4.6", recent_days=3, search_x=True)
     - 公式リリース: search_web("Anthropic Claude Opus 4.6 release announcement", recent_days=3)
     - モデルの特徴: search_web("Anthropic Claude Opus capabilities benchmark")
 
     Args:
         query: 検索クエリ（英語推奨。ベンダー名+モデル名を必ず含めること）
-        recent_days: 検索対象を直近N日以内に限定（0=制限なし、リリース情報には3を推奨）
-        search_x: Trueの場合、X（旧Twitter）に限定して検索する（速報・反響の収集に有効）
+        recent_days: 検索対象を直近N日以内に公開されたページに限定（0=制限なし、リリース情報には3を推奨）
 
     Returns:
-        検索結果（タイトル・URL・内容を含む）
+        検索結果（タイトル・URL・公開日・本文の抜粋）
     """
-    if not TAVILY_API_KEY:
-        return "エラー: TAVILY_API_KEY が設定されていません"
-
     try:
-        params = {
-            "query": query,
-            "search_depth": "advanced",
-            "max_results": 3,
-            "include_answer": not search_x,
-        }
+        params = {"webSearchId": "web-search.v1", "searchQuery": query, "maxResults": 5}
         if recent_days > 0:
-            params["days"] = recent_days
-        if search_x:
-            params["include_domains"] = ["x.com", "twitter.com"]
+            params["filters"] = {"publishedDateFilter": {
+                "publishedAfter": datetime.now(timezone.utc) - timedelta(days=recent_days)}}
+        results = web_search_client.invoke_web_search(**params).get("results", [])
+        logger.info(f"web search: {len(results)} results for {query!r}")
 
-        response = requests.post(
-            "https://api.tavily.com/search",
-            headers={
-                "Authorization": f"Bearer {TAVILY_API_KEY}",
-                "Content-Type": "application/json"
-            },
-            json=params,
-            timeout=30
-        )
-        response.raise_for_status()
-        data = response.json()
-
-        # 回答 + ソース付き検索結果を両方返す
         parts = []
-
-        if data.get("answer"):
-            parts.append(f"【要約】{data['answer']}")
-
-        results = data.get("results", [])
-        if results:
-            parts.append("【検索結果】")
-            for r in results[:3]:
-                title = r.get('title', 'No title')
-                url = r.get('url', '')
-                content = r.get('content', '')[:300]
-                parts.append(f"- {title}\n  URL: {url}\n  {content}")
-
-        return "\n\n".join(parts) if parts else "検索結果が見つかりませんでした"
+        for r in results:
+            published = r.get("publishedAt")
+            date = f"（{published:%Y-%m-%d}）" if published else ""
+            parts.append(f"- {r.get('title') or 'No title'}{date}\n  URL: {r.get('url', '')}\n  {(r.get('text') or '')[:400]}")
+        return "【検索結果】\n" + "\n\n".join(parts) if parts else "検索結果が見つかりませんでした"
 
     except Exception as e:
         error_msg = f"ウェブ検索に失敗しました: {str(e)}"
@@ -158,28 +130,20 @@ def create_agent() -> Agent:
 | stability.* | Stability AI | Stable Diffusion |
 | deepseek.* | DeepSeek | DeepSeek |
 
-## 検索戦略（3段階検索）
+## 検索戦略（2段階検索）
 
 新しいモデルはリリース直後のため、検索を工夫しないと正確な情報が見つかりません。
 以下の手順で検索してください。**検索クエリは必ず英語で**書いてください。
 
-### ステップ1: X（旧Twitter）で速報を検索（直近3日以内）
+### ステップ1: 公式リリース情報を検索（直近3日以内）
 ```
-search_web("{ベンダー名} {モデル名}", recent_days=3, search_x=True)
+search_web("{ベンダー名} {モデル名} release announcement", recent_days=3)
 ```
-例: search_web("Anthropic Claude Opus 4.6", recent_days=3, search_x=True)
+例: search_web("Anthropic Claude Opus 4.6 release announcement", recent_days=3)
 
-→ 公式アカウントのツイートや、ベンチマーク結果・業界の反響を収集する。
+→ ベンダーの公式ブログやプレスリリース、AWSの発表を探す。
 
-### ステップ2: 公式リリース情報を検索（直近3日以内）
-```
-search_web("{ベンダー名} {モデル名} release announcement blog", recent_days=3)
-```
-例: search_web("Anthropic Claude Opus 4.6 release announcement blog", recent_days=3)
-
-→ ベンダーの公式ブログやプレスリリースを探す。
-
-### ステップ3: モデルシリーズの特徴を検索（補足が必要な場合のみ）
+### ステップ2: モデルシリーズの特徴を検索（補足が必要な場合のみ）
 ```
 search_web("{ベンダー名} {モデルシリーズ} capabilities features benchmark")
 ```
@@ -189,7 +153,7 @@ search_web("{ベンダー名} {モデルシリーズ} capabilities features benc
 
 ### 注意
 - 同じモデルシリーズが複数リージョンに出た場合、検索は1セットで十分です
-- ステップ1〜2で十分な情報が得られた場合、ステップ3は省略してOKです
+- ステップ1で十分な情報が得られた場合、ステップ2は省略してOKです
 
 ## メール作成
 

@@ -1,6 +1,6 @@
 # Bedrock新モデルを宇宙最速でお知らせくん
 
-Amazon Bedrockに新しいモデルが追加されたことを自動検知し、メールで通知するサーバーレスアプリケーションです。バージニア北部・オレゴン・東京の3リージョンを1分おきに確かめ、新しいモデルが見つかると、[Strands Agents](https://strandsagents.com/) で作ったエージェントが Tavily のウェブ検索でモデルの特徴を調べ、日本語の通知メールを書きます。エージェントは [Bedrock AgentCore](https://docs.aws.amazon.com/bedrock/latest/userguide/agents-agentcore.html) Runtime で動きます。
+Amazon Bedrockに新しいモデルが追加されたことを自動検知し、メールで通知するサーバーレスアプリケーションです。バージニア北部・オレゴン・東京の3リージョンを1分おきに確かめ、新しいモデルが見つかると、[Strands Agents](https://strandsagents.com/) で作ったエージェントが [AgentCore Web Search](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/web-search-api.html)（AWS が用意するウェブ検索。APIキー不要）でモデルの特徴を調べ、日本語の通知メールを書きます。エージェントは [Bedrock AgentCore](https://docs.aws.amazon.com/bedrock/latest/userguide/agents-agentcore.html) Runtime で動きます。
 
 ## アーキテクチャ
 
@@ -50,10 +50,9 @@ npm install
 # AWS認証（必要に応じて）
 aws login
 
-# デプロイ（メールアドレスとTavily APIキーを指定）
+# デプロイ（通知先のメールアドレスを指定）
 cdk deploy \
-  -c notificationEmail=your-email@example.com \
-  -c tavilyApiKey=tvly-your-api-key
+  -c notificationEmail=your-email@example.com
 ```
 
 ### オプション: 高速デプロイ（Hotswap）
@@ -62,8 +61,7 @@ cdk deploy \
 
 ```bash
 cdk deploy --hotswap \
-  -c notificationEmail=your-email@example.com \
-  -c tavilyApiKey=tvly-your-api-key
+  -c notificationEmail=your-email@example.com
 ```
 
 ### オプション: 監視対象リージョンを変更
@@ -71,7 +69,6 @@ cdk deploy --hotswap \
 ```bash
 cdk deploy \
   -c notificationEmail=your-email@example.com \
-  -c tavilyApiKey=tvly-your-api-key \
   -c targetRegions=us-east-1,us-west-2
 ```
 
@@ -85,10 +82,9 @@ cdk deploy \
 | パラメータ | 説明 | デフォルト値 |
 |-----------|------|-------------|
 | `notificationEmail` | 通知先メールアドレス | 必須 |
-| `tavilyApiKey` | Tavily APIキー（ウェブ検索用） | 任意 |
 | `targetRegions` | 監視対象リージョン（カンマ区切り） | `us-east-1,us-west-2,ap-northeast-1` |
 
-Tavily APIキーは [tavily.com](https://tavily.com/) で取得できます。
+ウェブ検索は AgentCore Web Search を使うため、APIキーの用意は要りません（エージェントの実行ロールに `bedrock-agentcore:InvokeWebSearch` を付けています）。
 
 ## ディレクトリ構成
 
@@ -132,7 +128,7 @@ cdk destroy
 | IaC | AWS CDK (TypeScript) |
 | Lambda | Python 3.13 |
 | エージェント | Strands Agents + Bedrock AgentCore Runtime |
-| ウェブ検索 | Tavily API |
+| ウェブ検索 | AgentCore Web Search |
 | データストア | Amazon DynamoDB |
 | 通知 | Amazon SNS (Email) |
 | スケジューラ | Amazon EventBridge Scheduler |
