@@ -56,9 +56,11 @@ export class BedrockModelDetectorStack extends cdk.Stack {
     const agentRuntime = new agentcore.Runtime(this, 'NotificationAgent', {
       runtimeName: 'bedrock_model_detector_agent',
       agentRuntimeArtifact: agentRuntimeArtifact,
-      description: 'Bedrock新モデル通知エージェント（AgentCore Web Search対応）',
+      description: 'Bedrock新モデル通知エージェント（Brave Search対応）',
       environmentVariables: {
         SNS_TOPIC_ARN: notificationTopic.topicArn,
+        // Brave のキーを保管庫から読むためのワークロード ID（README の手順で作る）
+        BRAVE_WORKLOAD: 'bedrock-model-detector',
       },
       // IAM認証はデフォルト（authorizerConfigurationを設定しない）
     });
@@ -75,10 +77,22 @@ export class BedrockModelDetectorStack extends cdk.Stack {
       ],
     }));
 
-    // AgentCore RuntimeにWeb検索（AgentCore Web Search）の権限を付与
+    // Web検索は Brave（AWS Marketplace の従量課金）。キーは AgentCore Identity の API キー保管庫 brave から読む
+    const vault = `arn:${this.partition}:bedrock-agentcore:${this.region}:${this.account}:token-vault/default`;
     agentRuntime.addToRolePolicy(new iam.PolicyStatement({
-      actions: ['bedrock-agentcore:InvokeWebSearch'],
-      resources: [`arn:${this.partition}:bedrock-agentcore:${this.region}:aws:tool/web-search.v1`],
+      actions: ['bedrock-agentcore:GetResourceApiKey'],
+      resources: [vault, `${vault}/apikeycredentialprovider/brave`,
+        `arn:${this.partition}:bedrock-agentcore:${this.region}:${this.account}:workload-identity-directory/default`,
+        `arn:${this.partition}:bedrock-agentcore:${this.region}:${this.account}:workload-identity-directory/default/workload-identity/*`],
+    }));
+    agentRuntime.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['bedrock-agentcore:GetWorkloadAccessToken'],
+      resources: [`arn:${this.partition}:bedrock-agentcore:${this.region}:${this.account}:workload-identity-directory/default`,
+        `arn:${this.partition}:bedrock-agentcore:${this.region}:${this.account}:workload-identity-directory/default/workload-identity/bedrock-model-detector`],
+    }));
+    agentRuntime.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['secretsmanager:GetSecretValue'],
+      resources: [`arn:${this.partition}:secretsmanager:${this.region}:${this.account}:secret:bedrock-agentcore-identity!default/apikey/brave-*`],
     }));
 
     // AgentCore RuntimeにSNS Publish権限を付与

@@ -6,9 +6,10 @@ Strands Agentsを使用してメール本文を生成し、SNSに送信する
 import os
 import logging
 
-from datetime import datetime, timedelta, timezone
 
 import boto3
+
+import brave
 from strands import Agent, tool
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 
@@ -31,8 +32,6 @@ def get_region_from_arn(arn: str) -> str:
 # SNSクライアント（リージョンを明示的に指定）
 sns_client = boto3.client('sns', region_name=get_region_from_arn(SNS_TOPIC_ARN))
 
-# AgentCore Web Search（AWS が用意する検索。リソースを作らず IAM だけで呼べる）
-web_search_client = boto3.client('bedrock-agentcore', region_name=get_region_from_arn(SNS_TOPIC_ARN))
 
 # AgentCoreアプリ
 app = BedrockAgentCoreApp()
@@ -40,7 +39,7 @@ app = BedrockAgentCoreApp()
 
 @tool
 def search_web(query: str, recent_days: int = 0) -> str:
-    """ウェブ検索を実行して、AIモデルに関する最新情報を取得します（AgentCore Web Search）。
+    """ウェブ検索を実行して、AIモデルに関する最新情報を取得します（Brave Search）。
 
     新モデルのリリース情報を調べる際は、以下のようなクエリが効果的です:
     - 公式リリース: search_web("Anthropic Claude Opus 4.6 release announcement", recent_days=3)
@@ -54,18 +53,13 @@ def search_web(query: str, recent_days: int = 0) -> str:
         検索結果（タイトル・URL・公開日・本文の抜粋）
     """
     try:
-        params = {"webSearchId": "web-search.v1", "searchQuery": query, "maxResults": 5}
-        if recent_days > 0:
-            params["filters"] = {"publishedDateFilter": {
-                "publishedAfter": datetime.now(timezone.utc) - timedelta(days=recent_days)}}
-        results = web_search_client.invoke_web_search(**params).get("results", [])
+        results = brave.search(query, count=5, recent_days=recent_days, japanese=False)
         logger.info(f"web search: {len(results)} results for {query!r}")
 
         parts = []
         for r in results:
-            published = r.get("publishedAt")
-            date = f"（{published:%Y-%m-%d}）" if published else ""
-            parts.append(f"- {r.get('title') or 'No title'}{date}\n  URL: {r.get('url', '')}\n  {(r.get('text') or '')[:400]}")
+            date = f"（{r['age']}）" if r.get("age") else ""
+            parts.append(f"- {r.get('title') or 'No title'}{date}\n  URL: {r.get('url', '')}\n  {r['text'][:400]}")
         return "【検索結果】\n" + "\n\n".join(parts) if parts else "検索結果が見つかりませんでした"
 
     except Exception as e:
@@ -208,6 +202,7 @@ async def invoke(payload=None):
             }
 
         logger.info(f"Received prompt: {prompt[:200]}...")
+        brave.prime()  # 保管庫から Brave のキーを読むには、呼び出しの文脈にある workload token が要る
 
         agent = create_agent()
         response = agent(prompt)

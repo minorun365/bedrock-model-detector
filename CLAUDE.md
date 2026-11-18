@@ -35,7 +35,7 @@ Lambda (Python 3.13) ─── DynamoDB（差分管理）
     └─ 新モデル検出 → AgentCore Runtime
                             ↓
                       Strands Agent
-                        ├─ AgentCore Web Search（モデル情報収集）
+                        ├─ Brave Search API（モデル情報収集）
                         └─ SNS通知（1通にまとめて送信）
 ```
 

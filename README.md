@@ -1,6 +1,6 @@
 # Bedrock新モデルを宇宙最速でお知らせくん
 
-Amazon Bedrockに新しいモデルが追加されたことを自動検知し、メールで通知するサーバーレスアプリケーションです。バージニア北部・オレゴン・東京の3リージョンを1分おきに確かめ、新しいモデルが見つかると、[Strands Agents](https://strandsagents.com/) で作ったエージェントが [AgentCore Web Search](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/web-search-api.html)（AWS が用意するウェブ検索。APIキー不要）でモデルの特徴を調べ、日本語の通知メールを書きます。エージェントは [Bedrock AgentCore](https://docs.aws.amazon.com/bedrock/latest/userguide/agents-agentcore.html) Runtime で動きます。
+Amazon Bedrockに新しいモデルが追加されたことを自動検知し、メールで通知するサーバーレスアプリケーションです。バージニア北部・オレゴン・東京の3リージョンを1分おきに確かめ、新しいモデルが見つかると、[Strands Agents](https://strandsagents.com/) で作ったエージェントが [Brave Search API](https://brave.com/search/api/)でモデルの特徴を調べ、日本語の通知メールを書きます。エージェントは [Bedrock AgentCore](https://docs.aws.amazon.com/bedrock/latest/userguide/agents-agentcore.html) Runtime で動きます。
 
 ## アーキテクチャ
 
@@ -84,7 +84,12 @@ cdk deploy \
 | `notificationEmail` | 通知先メールアドレス | 必須 |
 | `targetRegions` | 監視対象リージョン（カンマ区切り） | `us-east-1,us-west-2,ap-northeast-1` |
 
-ウェブ検索は AgentCore Web Search を使うため、APIキーの用意は要りません（エージェントの実行ロールに `bedrock-agentcore:InvokeWebSearch` を付けています）。
+ウェブ検索は Brave Search API を使います。APIキーはデプロイ先のリージョンの AgentCore Identity に、`brave` という名前の API キー資格情報プロバイダとして登録してください。エージェントは実行時に、ワークロード ID `bedrock-model-detector` の身元でそこからキーを読みます。
+
+```bash
+aws bedrock-agentcore-control create-api-key-credential-provider --region us-east-1 --name brave --api-key <Brave のAPIキー>
+aws bedrock-agentcore-control create-workload-identity --region us-east-1 --name bedrock-model-detector
+```
 
 ## ディレクトリ構成
 
@@ -128,7 +133,7 @@ cdk destroy
 | IaC | AWS CDK (TypeScript) |
 | Lambda | Python 3.13 |
 | エージェント | Strands Agents + Bedrock AgentCore Runtime |
-| ウェブ検索 | AgentCore Web Search |
+| ウェブ検索 | Brave Search API（キーは AgentCore Identity） |
 | データストア | Amazon DynamoDB |
 | 通知 | Amazon SNS (Email) |
 | スケジューラ | Amazon EventBridge Scheduler |
