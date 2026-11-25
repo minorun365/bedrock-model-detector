@@ -5,12 +5,12 @@
 Amazon Bedrockに新しいモデルが追加されたことを自動検知し、Eメールで通知するシステム。
 
 ### 1.1 技術スタック
-- **IaC**: AWS CDK (TypeScript)
-- **Lambda**: Python 3.13
-- **AgentCore Runtime**: L2 Construct (`@aws-cdk/aws-bedrock-agentcore-alpha`)
-- **データストア**: DynamoDB
-- **通知**: Amazon SNS (Email)
-- **スケジューラ**: EventBridge Scheduler
+- IaC: AWS CDK (TypeScript)
+- Lambda: Python 3.13
+- AgentCore Runtime: L2 Construct (`@aws-cdk/aws-bedrock-agentcore-alpha`)
+- データストア: DynamoDB
+- 通知: Amazon SNS (Email)
+- スケジューラ: EventBridge Scheduler
 
 ---
 
@@ -56,7 +56,7 @@ Amazon Bedrockに新しいモデルが追加されたことを自動検知し、
 
 ## 3. 監視対象リージョン
 
-設定ファイルで変更可能とする（デフォルト値）:
+設定ファイルで変更できる。デフォルト値は以下の通り。
 
 | リージョン | 名前 | 説明 |
 |-----------|------|------|
@@ -71,10 +71,10 @@ Amazon Bedrockに新しいモデルが追加されたことを自動検知し、
 ### 4.1 Lambda関数（モデル検出）
 
 #### 基本情報
-- **ランタイム**: Python 3.13
-- **メモリ**: 256 MB
-- **タイムアウト**: 60秒
-- **トリガー**: EventBridge Scheduler (5分おき)
+- ランタイム: Python 3.13
+- メモリ: 256 MB
+- タイムアウト: 60秒
+- トリガー: EventBridge Scheduler (5分おき)
 
 #### 環境変数
 | 変数名 | 説明 | 例 |
@@ -137,8 +137,8 @@ def handler(event, context):
 ### 4.2 DynamoDB テーブル
 
 #### テーブル設計
-- **テーブル名**: `bedrock-model-detector`
-- **キャパシティモード**: オンデマンド
+- テーブル名: `bedrock-model-detector`
+- キャパシティモード: オンデマンド
 
 | 属性 | 型 | キー | 説明 |
 |-----|-----|-----|------|
@@ -162,9 +162,9 @@ def handler(event, context):
 ### 4.3 AgentCore Runtime（通知エージェント）
 
 #### 基本情報
-- **認証モード**: IAM（Lambdaから呼び出し）
-- **使用モデル**: Claude Sonnet 4.5 (`us.anthropic.claude-sonnet-4-5-20250929-v1:0`)
-- **フレームワーク**: Strands Agents
+- 認証モード: IAM（Lambdaから呼び出し）
+- 使用モデル: Claude Sonnet 4.5 (`us.anthropic.claude-sonnet-4-5-20250929-v1:0`)
+- フレームワーク: Strands Agents
 
 #### 環境変数
 | 変数名 | 説明 |
@@ -214,7 +214,7 @@ def send_notification(subject: str, body: str) -> str:
     return "通知を送信しました"
 ```
 
-**注意**: AgentCore Runtimeのコンテナ内では `AWS_REGION` 環境変数が設定されていないため、boto3クライアント作成時にリージョンを明示的に指定する必要がある。
+**注意**: AgentCore Runtimeのコンテナ内では `AWS_REGION` 環境変数が設定されていないため、boto3クライアントの作成時にリージョンを明示的に指定する必要がある。
 
 #### 入力ペイロード
 ```json
@@ -244,22 +244,22 @@ def send_notification(subject: str, body: str) -> str:
 ### 4.4 Amazon SNS
 
 #### トピック設定
-- **トピック名**: `bedrock-model-detector-notifications`
-- **タイプ**: Standard
+- トピック名: `bedrock-model-detector-notifications`
+- タイプ: Standard
 
 #### サブスクリプション
-- **プロトコル**: Email
-- **エンドポイント**: パラメータで指定（`NotificationEmail`）
+- プロトコル: Email
+- エンドポイント: パラメータ `NotificationEmail` で指定
 
 ---
 
 ### 4.5 EventBridge Scheduler
 
 #### スケジュール設定
-- **名前**: `bedrock-model-detector-schedule`
-- **スケジュール式**: `rate(5 minutes)`
-- **ターゲット**: Lambda関数
-- **フレキシブルタイムウィンドウ**: OFF
+- 名前: `bedrock-model-detector-schedule`
+- スケジュール式: `rate(5 minutes)`
+- ターゲット: Lambda関数
+- フレキシブルタイムウィンドウ: OFF
 
 ---
 
@@ -309,7 +309,7 @@ AWS_PROFILE=sandbox cdk deploy -c notificationEmail=your-email@example.com
 AWS_PROFILE=sandbox cdk deploy -c notificationEmail=your-email@example.com -c targetRegions=us-east-1,us-west-2
 ```
 
-**注意**: dotenvは使用しない（CDK出力との相性問題があるため）
+CDKの出力と相性問題があるため、dotenvは使用しない。
 
 ---
 
@@ -355,16 +355,16 @@ Bedrock Model Detector
 ## 7. エラーハンドリング
 
 ### ListFoundationModels API失敗時
-- リトライして成功するまで待つ（指数バックオフ）
-- 最大リトライ回数を超えた場合はログに記録し、次回実行に持ち越し
+- 指数バックオフでリトライし、成功するまで待つ
+- 最大リトライ回数を超えた場合はログに記録し、次回の実行に持ち越す
 
 ### AgentCore Runtime失敗時
-- ログに記録し、次回実行時に再試行
-- DynamoDBは更新しない（差分が残る）
+- ログに記録し、次回の実行時に再試行する
+- DynamoDBは更新せず、差分を残す
 
 ### SNS送信失敗時
-- ログに記録
-- DynamoDBは更新する（無限ループ防止）
+- ログに記録する
+- 無限ループを防ぐため、DynamoDBは更新する
 
 ---
 

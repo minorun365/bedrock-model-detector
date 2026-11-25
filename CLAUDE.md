@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## プロジェクト概要
 
-Amazon Bedrockに新しいモデルが追加されたことを自動検知し、メールで通知するサーバーレスアプリケーション。Strands Agents + Bedrock AgentCoreを活用。
+Amazon Bedrockに新しいモデルが追加されたことを自動で検知し、メールで通知するサーバーレスアプリケーションで、Strands AgentsとBedrock AgentCoreを使っている。
 
 ## コマンド
 
@@ -39,36 +39,36 @@ Lambda (Python 3.13) ─── DynamoDB（差分管理）
                         └─ SNS通知（1通にまとめて送信）
 ```
 
-**監視リージョン**: us-east-1, us-west-2, ap-northeast-1（3リージョン並列処理）
+監視リージョンは us-east-1, us-west-2, ap-northeast-1 の3つで、並列に処理する。
 
 ## 主要ファイル
 
 | ファイル | 役割 |
 |---------|------|
-| `cdk/lib/bedrock-model-detector-stack.ts` | CDKスタック定義（全リソース） |
-| `lambda/detector/handler.py` | モデル検出・差分比較・AgentCore呼び出し |
-| `runtime/agent.py` | Strands Agent（メール本文生成・SNS送信） |
+| `cdk/lib/bedrock-model-detector-stack.ts` | 全リソースのCDKスタック定義 |
+| `lambda/detector/handler.py` | モデルの検出、差分比較、AgentCoreの呼び出し |
+| `runtime/agent.py` | メール本文の生成とSNS送信を行うStrands Agent |
 
 ## 重要な実装パターン
 
 ### CDK Context による設定管理
-dotenvは使わない（CDKとの相性問題あり）。設定は `-c key=value` で渡す。
+CDKとの相性に問題があるため、dotenvは使わない。設定は `-c key=value` で渡す。
 
 ### AgentCore Runtime IAM認証
-Lambda実行ロールには `agentRuntimeArn` と `agentRuntimeArn/*` 両方のリソースを許可する必要あり。
+Lambda実行ロールには、`agentRuntimeArn` と `agentRuntimeArn/*` の両方のリソースを許可する必要がある。
 
 ### AgentCore内でのboto3
-リージョン明示指定が必須（環境変数が設定されていない）。ARNから抽出するパターンを使用。
+環境変数が設定されていないため、リージョンは必ず明示的に指定する。ARNから抽出するパターンを使う。
 
 ### runtimeSessionId
-最小33文字必要。`f"detector-{uuid.uuid4()}"` を使用。
+最小で33文字必要になる。`f"detector-{uuid.uuid4()}"` を使う。
 
 ### SCPタグ
-Organizations配下では `Project` タグが必須。`cdk.Tags.of(stack).add('Project', 'presales')` で付与。
+Organizations配下では `Project` タグが必須なので、`cdk.Tags.of(stack).add('Project', 'presales')` で付与する。
 
 ## デバッグ
 
-詳細は `docs/TEST.md` 参照。DynamoDBから特定モデルを削除して新規検出をシミュレート可能。
+詳細は `docs/TEST.md` を参照すること。DynamoDBから特定のモデルを削除すれば、新規検出をシミュレートできる。
 
 ```bash
 # Lambda手動実行

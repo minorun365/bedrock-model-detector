@@ -8,20 +8,20 @@
 
 ### dotenv 17とCDKの相性問題
 
-**発生日**: 2026-02-03
+発生日: 2026-02-03
 
-dotenv 17.x をCDKプロジェクトで使用すると、`cdk synth` や `cdk deploy` の標準出力が表示されなくなる問題が発生。
+dotenv 17.x をCDKプロジェクトで使うと、`cdk synth` や `cdk deploy` の標準出力が表示されなくなる問題が起きた。
 
-**症状**:
+症状:
 - `cdk synth` を実行してもCloudFormationテンプレートが出力されない
 - dotenvのtipメッセージ（`[dotenv@17.2.3] injecting env...`）だけが表示される
 - `cdk.out` ディレクトリが作成されない
 
-**原因**:
-dotenv 17.x はdotenvxのAPIを使用しており、標準出力にログを出力する。これがCDKの出力をインターセプトしている可能性がある。
+原因:
+dotenv 17.x はdotenvxのAPIを使っており、標準出力にログを出す。これがCDKの出力をインターセプトしている可能性がある。
 
-**解決策**:
-dotenvを使わず、CDK Contextで設定を渡す方式に変更。
+解決策:
+dotenvを使わず、CDK Contextで設定を渡す方式に変えた。
 
 ```typescript
 // bin/cdk.ts
@@ -33,15 +33,15 @@ const notificationEmail = app.node.tryGetContext('notificationEmail');
 cdk deploy -c notificationEmail=your-email@example.com
 ```
 
-**代替案**:
-- dotenv 16.x にダウングレード
-- 環境変数を直接 `export` で設定
+代替案:
+- dotenv 16.x にダウングレードする
+- 環境変数を直接 `export` で設定する
 
 ---
 
 ### CDK Contextによる設定管理
 
-CDKで設定値を管理する標準的な方法。
+CDKで設定値を管理する標準的な方法だ。
 
 ```typescript
 // 値の取得
@@ -69,36 +69,36 @@ cdk deploy -c key=value -c key2=value2
 
 ### L2 ConstructのARNプロパティ
 
-**発生日**: 2026-02-03
+発生日: 2026-02-03
 
-`@aws-cdk/aws-bedrock-agentcore-alpha` のRuntimeクラスでARNを取得する際、プロパティ名に注意。
+`@aws-cdk/aws-bedrock-agentcore-alpha` のRuntimeクラスでARNを取得するときは、プロパティ名に注意する。
 
-**正しいプロパティ名**:
+正しいプロパティ名:
 ```typescript
 agentRuntime.agentRuntimeArn  // ✅ 正しい
 agentRuntime.runtimeArn       // ❌ 存在しない
 ```
 
-**その他のプロパティ**:
-- `agentRuntimeId` - ランタイムID
-- `agentRuntimeName` - ランタイム名
-- `agentRuntimeVersion` - バージョン
+その他のプロパティ:
+- `agentRuntimeId`: ランタイムID
+- `agentRuntimeName`: ランタイム名
+- `agentRuntimeVersion`: バージョン
 
 ---
 
 ### runtimeSessionIdの最小文字数
 
-**発生日**: 2026-02-03
+発生日: 2026-02-03
 
-`invoke_agent_runtime` APIの `runtimeSessionId` パラメータは最小33文字必要。
+`invoke_agent_runtime` APIの `runtimeSessionId` パラメータには最小33文字が必要だ。
 
-**エラーメッセージ**:
+エラーメッセージ:
 ```
 ParamValidationError: Invalid length for parameter runtimeSessionId, value: 23, valid min length: 33
 ```
 
-**解決策**:
-UUIDを使用して十分な長さを確保。
+解決策:
+UUIDを使って十分な長さを確保する。
 
 ```python
 import uuid
@@ -110,7 +110,7 @@ session_id = f"detector-{uuid.uuid4()}"  # 例: detector-550e8400-e29b-41d4-a716
 
 ### IAM認証モード（デフォルト）
 
-AgentCore RuntimeのIAM認証はデフォルトで有効。`authorizerConfiguration` を設定しなければIAM認証が使われる。
+AgentCore RuntimeのIAM認証はデフォルトで有効になっている。`authorizerConfiguration` を設定しなければIAM認証が使われる。
 
 ```typescript
 const agentRuntime = new agentcore.Runtime(this, 'MyRuntime', {
@@ -120,7 +120,7 @@ const agentRuntime = new agentcore.Runtime(this, 'MyRuntime', {
 });
 ```
 
-Lambdaから呼び出す場合は、Lambda実行ロールに以下の権限を付与：
+Lambdaから呼び出す場合は、Lambda実行ロールに以下の権限を付与する。
 
 ```typescript
 // ベースARNと全サブリソースの両方を許可
@@ -133,25 +133,25 @@ lambdaFunction.addToRolePolicy(new iam.PolicyStatement({
 }));
 ```
 
-**注意**: `agentRuntime.agentRuntimeArn` だけでは不十分。`/runtime-endpoint/DEFAULT` などのサブリソースへのアクセスも必要なため、`/*` サフィックス付きのARNも追加する。
+**注意**: `agentRuntime.agentRuntimeArn` だけでは不十分だ。`/runtime-endpoint/DEFAULT` などのサブリソースへのアクセスも必要なため、`/*` サフィックス付きのARNも追加する。
 
 ---
 
 ### AgentCore Runtime内でのboto3クライアント作成
 
-**発生日**: 2026-02-04
+発生日: 2026-02-04
 
-AgentCore Runtime（コンテナ）内でboto3クライアントを作成する際、リージョンを明示的に指定しないとエラーになる。
+AgentCore Runtime（コンテナ）内でboto3クライアントを作るとき、リージョンを明示的に指定しないとエラーになる。
 
-**エラーメッセージ**:
+エラーメッセージ:
 ```
 botocore.exceptions.NoRegionError: You must specify a region.
 ```
 
-**原因**:
+原因:
 AgentCore Runtimeの実行環境では `AWS_REGION` や `AWS_DEFAULT_REGION` 環境変数が自動設定されていない。
 
-**解決策**:
+解決策:
 ARNからリージョンを抽出するか、環境変数で明示的に渡す。
 
 ```python
@@ -170,7 +170,7 @@ sns_client = boto3.client('sns', region_name=get_region_from_arn(SNS_TOPIC_ARN))
 
 ### InvokeAgentRuntime APIのレスポンス処理
 
-**発生日**: 2026-02-04
+発生日: 2026-02-04
 
 `invoke_agent_runtime` APIのレスポンスは、ストリーミングではなく `.read()` で一括取得できる。
 
@@ -187,7 +187,7 @@ response_body = response['response'].read()
 response_data = json.loads(response_body)
 ```
 
-**注意**: ストリーミングが必要な場合は、イベントストリームとして処理する必要があるが、バッチ処理では不要。
+**注意**: ストリーミングを使う場合はイベントストリームとして処理する必要があるが、バッチ処理では不要だ。
 
 ---
 
@@ -195,17 +195,17 @@ response_data = json.loads(response_body)
 
 ### Projectタグ必須ポリシー
 
-**発生日**: 2026-02-04
+発生日: 2026-02-04
 
-Organizations配下のアカウントでSCPにより `Project` タグが必須になっている場合、CDKデプロイ時にタグを付与しないとリソース作成が失敗する。
+Organizations配下のアカウントでSCPによって `Project` タグが必須になっている場合、CDKデプロイ時にタグを付けないとリソースの作成に失敗する。
 
-**エラーメッセージ**:
+エラーメッセージ:
 ```
 User: ... is not authorized to perform: lambda:CreateFunction ... with an explicit deny in a service control policy
 ```
 
-**解決策**:
-CDKでスタック全体にタグを追加。
+解決策:
+CDKでスタック全体にタグを追加する。
 
 ```typescript
 // bin/cdk.ts
@@ -217,11 +217,11 @@ cdk.Tags.of(stack).add('Project', 'presales');
 
 ## EventBridge Scheduler + AgentCore Runtime
 
-EventBridge SchedulerからAgentCore Runtimeを直接呼び出すことも可能（Universal Target）。
+EventBridge SchedulerからAgentCore RuntimeをUniversal Targetで直接呼び出すこともできる。
 
-ただし、5分おきの実行ではAgentCoreの起動オーバーヘッドが気になるため、今回はLambda経由のハイブリッド構成を採用。
+ただし、5分おきの実行ではAgentCoreの起動オーバーヘッドが気になるため、今回はLambda経由のハイブリッド構成を採用した。
 
-**参考**:
+参考:
 - [Using universal targets in EventBridge Scheduler](https://docs.aws.amazon.com/scheduler/latest/UserGuide/managing-targets-universal.html)
 
 ---
@@ -230,7 +230,7 @@ EventBridge SchedulerからAgentCore Runtimeを直接呼び出すことも可能
 
 ### ListFoundationModels API
 
-各リージョンのBedrockモデル一覧を取得するAPI。
+各リージョンのBedrockモデル一覧を取得するAPIだ。
 
 ```python
 import boto3
@@ -242,7 +242,7 @@ for model in response['modelSummaries']:
     print(model['modelId'])
 ```
 
-**注意点**:
+注意点:
 - リージョンごとに利用可能なモデルが異なる
 - レスポンスには `modelId`, `modelName`, `providerName` などが含まれる
 - IAM権限: `bedrock:ListFoundationModels`（リソースは `*`）

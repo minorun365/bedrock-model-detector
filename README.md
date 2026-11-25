@@ -1,6 +1,6 @@
 # Bedrock新モデルを宇宙最速でお知らせくん
 
-Amazon Bedrockに新しいモデルが追加されたことを自動検知し、メールで通知するサーバーレスアプリケーションです。バージニア北部・オレゴン・東京の3リージョンを1分おきに確かめ、新しいモデルが見つかると、[Strands Agents](https://strandsagents.com/) で作ったエージェントが [Brave Search API](https://brave.com/search/api/)でモデルの特徴を調べ、日本語の通知メールを書きます。エージェントは [Bedrock AgentCore](https://docs.aws.amazon.com/bedrock/latest/userguide/agents-agentcore.html) Runtime で動きます。
+Amazon Bedrockに新しいモデルが追加されたことを自動検知し、メールで通知するサーバーレスアプリケーションです。バージニア北部・オレゴン・東京の3リージョンを1分おきに確認し、新しいモデルが見つかると、[Strands Agents](https://strandsagents.com/) で作ったエージェントが [Brave Search API](https://brave.com/search/api/) でモデルの特徴を調べ、日本語の通知メールを書きます。エージェントは [Bedrock AgentCore](https://docs.aws.amazon.com/bedrock/latest/userguide/agents-agentcore.html) Runtime で動きます。
 
 ## アーキテクチャ
 
@@ -57,7 +57,7 @@ cdk deploy \
 
 ### オプション: 高速デプロイ（Hotswap）
 
-開発中はHotswapを使うと高速にデプロイできます（本番環境では使用禁止）。
+開発中はHotswapを使うと高速にデプロイできます。本番環境での使用は禁止です。
 
 ```bash
 cdk deploy --hotswap \
@@ -84,7 +84,7 @@ cdk deploy \
 | `notificationEmail` | 通知先メールアドレス | 必須 |
 | `targetRegions` | 監視対象リージョン（カンマ区切り） | `us-east-1,us-west-2,ap-northeast-1` |
 
-ウェブ検索は Brave Search API を使います。APIキーはデプロイ先のリージョンの AgentCore Identity に、`brave` という名前の API キー資格情報プロバイダとして登録してください。エージェントは実行時に、ワークロード ID `bedrock-model-detector` の身元でそこからキーを読みます。
+ウェブ検索は Brave Search API を使います。APIキーはデプロイ先リージョンの AgentCore Identity に、`brave` という名前のAPIキー資格情報プロバイダとして登録してください。エージェントは実行時に、ワークロードID `bedrock-model-detector` として AgentCore Identity からキーを読み込みます。
 
 ```bash
 aws bedrock-agentcore-control create-api-key-credential-provider --region us-east-1 --name brave --api-key <Brave のAPIキー>
